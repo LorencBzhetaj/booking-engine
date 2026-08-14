@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{title}} — Gjecaj Admin</title>
+  <style>
+    :root { --line:#e2e2e6; --muted:#6b7280; --bg:#fafafa; --accent:#1f6feb; }
+    * { box-sizing: border-box; }
+    body { margin:0; font:15px/1.5 system-ui,Segoe UI,Roboto,sans-serif; color:#111; background:var(--bg); }
+    header.top { background:#111; color:#fff; padding:12px 20px; display:flex; gap:20px; align-items:center; }
+    header.top a { color:#fff; text-decoration:none; opacity:.85; }
+    header.top a:hover { opacity:1; }
+    header.top .brand { font-weight:700; margin-right:10px; }
+    main { max-width:1100px; margin:24px auto; padding:0 20px; }
+    h1 { font-size:22px; margin:0 0 16px; }
+    table { border-collapse:collapse; width:100%; background:#fff; border:1px solid var(--line); }
+    th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); font-size:14px; }
+    th { background:#f3f4f6; }
+    .filters, form.inline { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:16px; }
+    label { display:flex; flex-direction:column; font-size:12px; color:var(--muted); gap:3px; }
+    input, select { padding:6px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+    button { padding:7px 12px; border:0; border-radius:6px; background:var(--accent); color:#fff; cursor:pointer; font:inherit; }
+    button.danger { background:#c0392b; }
+    button.ghost { background:#e5e7eb; color:#111; }
+    .badge { padding:2px 8px; border-radius:999px; font-size:12px; font-weight:600; }
+    .s-pending { background:#fef3c7; color:#92400e; }
+    .s-confirmed { background:#d1fae5; color:#065f46; }
+    .s-cancelled { background:#e5e7eb; color:#374151; }
+    .s-expired { background:#fee2e2; color:#991b1b; }
+    .s-paid { background:#d1fae5; color:#065f46; }
+    .s-unpaid { background:#fef3c7; color:#92400e; }
+    .s-refunded { background:#e0e7ff; color:#3730a3; }
+    .notice { padding:10px 12px; border-radius:8px; margin-bottom:14px; font-size:14px; }
+    .notice.ok { background:#d1fae5; color:#065f46; }
+    .notice.warn { background:#fef3c7; color:#92400e; }
+    .notice.error { background:#fee2e2; color:#991b1b; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:20px; }
+    .cal { border-collapse:collapse; }
+    .cal td, .cal th { border:1px solid var(--line); text-align:center; padding:0; width:26px; height:30px; font-size:11px; }
+    .cal td.roomname, .cal th.roomname { text-align:left; width:150px; padding:4px 8px; font-weight:600; }
+    .cal .c-free { background:#fff; }
+    .cal .c-pending { background:#fde68a; }
+    .cal .c-confirmed { background:#6ee7b7; }
+    .cal .c-cancelled { background:#e5e7eb; }
+    .cal .c-expired { background:#fecaca; }
+    .muted { color:var(--muted); font-size:13px; }
+    .actions { display:flex; gap:6px; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <span class="brand">Gjecaj Admin</span>
+    <a href="/admin/reservations">Reservations</a>
+    <a href="/admin/calendar">Calendar</a>
+    <a href="/admin/rooms">Rooms</a>
+    <a href="/admin/seasons">Seasons</a>
+  </header>
+  <main>
+    <h1>{{title}}</h1>

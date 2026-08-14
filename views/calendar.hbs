@@ -1,0 +1,40 @@
+{{> header}}
+
+<div class="filters">
+  <a href="/admin/calendar?year={{prev.year}}&month={{prev.month}}"><button class="ghost" type="button">← Prev</button></a>
+  <strong style="align-self:center">{{monthLabel}} {{year}}</strong>
+  <a href="/admin/calendar?year={{next.year}}&month={{next.month}}"><button class="ghost" type="button">Next →</button></a>
+</div>
+
+<div style="overflow-x:auto">
+  <table class="cal">
+    <thead>
+      <tr>
+        <th class="roomname">Room</th>
+        {{#each days}}<th>{{this}}</th>{{/each}}
+      </tr>
+    </thead>
+    <tbody>
+      {{#each rows}}
+        <tr>
+          <td class="roomname">{{this.roomName}}</td>
+          {{#each this.cells}}
+            <td class="c-{{this.status}}" title="Day {{this.day}}: {{this.status}}"></td>
+          {{/each}}
+        </tr>
+      {{else}}
+        <tr><td class="roomname muted">No rooms.</td></tr>
+      {{/each}}
+    </tbody>
+  </table>
+</div>
+
+<p class="muted" style="margin-top:12px">
+  Legend:
+  <span class="badge s-pending">pending</span>
+  <span class="badge s-confirmed">confirmed</span>
+  <span class="badge s-cancelled">cancelled</span>
+  <span class="badge s-expired">expired</span>
+</p>
+
+{{> footer}}

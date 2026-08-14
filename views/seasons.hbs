@@ -1,0 +1,54 @@
+{{> header}}
+
+{{#if ok}}<div class="notice ok">Season {{ok}} successfully.</div>{{/if}}
+{{#if warning}}
+  <div class="notice warn">
+    {{#if (eq warning "overlap")}}Saved, but this season overlaps another season for the same room type — check the dates.{{else}}{{warning}}{{/if}}
+  </div>
+{{/if}}
+
+<table>
+  <thead>
+    <tr><th>Room type</th><th>Name</th><th>Start</th><th>End</th><th>× modifier</th><th>Min</th><th>Max</th><th></th></tr>
+  </thead>
+  <tbody>
+    {{#each seasons}}
+      <tr>
+        <form class="inline" method="post" action="/admin/seasons/{{this.id}}?_method=PUT">
+          <td><input name="roomType" value="{{this.roomType}}" required style="width:90px" /></td>
+          <td><input name="name" value="{{this.name}}" style="width:120px" /></td>
+          <td><input name="startDate" type="date" value="{{this.startDate}}" required /></td>
+          <td><input name="endDate" type="date" value="{{this.endDate}}" required /></td>
+          <td><input name="priceModifier" type="number" step="0.001" min="0" value="{{this.priceModifier}}" required style="width:80px" /></td>
+          <td><input name="minStay" type="number" min="1" value="{{this.minStay}}" required style="width:60px" /></td>
+          <td><input name="maxStay" type="number" min="1" value="{{this.maxStay}}" style="width:60px" /></td>
+          <td class="actions">
+            <button type="submit">Save</button>
+        </form>
+            <form method="post" action="/admin/seasons/{{this.id}}?_method=DELETE" onsubmit="return confirm('Delete this season?')">
+              <button class="danger" type="submit">Delete</button>
+            </form>
+          </td>
+      </tr>
+    {{else}}
+      <tr><td colspan="8" class="muted">No seasons yet.</td></tr>
+    {{/each}}
+  </tbody>
+</table>
+
+<div class="card" style="margin-top:20px">
+  <h3 style="margin-top:0">Add season</h3>
+  <form class="inline" method="post" action="/admin/seasons">
+    <label>Room type<input name="roomType" placeholder="double" list="roomTypes" required /></label>
+    <datalist id="roomTypes">{{#each roomTypes}}<option value="{{this}}"></option>{{/each}}</datalist>
+    <label>Name<input name="name" placeholder="High season" /></label>
+    <label>Start<input name="startDate" type="date" required /></label>
+    <label>End<input name="endDate" type="date" required /></label>
+    <label>× modifier<input name="priceModifier" type="number" step="0.001" min="0" value="1.000" required /></label>
+    <label>Min stay<input name="minStay" type="number" min="1" value="1" required /></label>
+    <label>Max stay<input name="maxStay" type="number" min="1" /></label>
+    <button type="submit">Create</button>
+  </form>
+</div>
+
+{{> footer}}

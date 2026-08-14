@@ -1,0 +1,149 @@
+// Gjecaj Booking Engine — Phase 1 schema
+// Tenant-ready from day one: every core table carries tenant_id and every
+// query is expected to filter by it. Business rules (tax, seasonal pricing,
+// min/max stay) live as DATA in tables, never hardcoded in application code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ReservationStatus {
+  pending
+  confirmed
+  cancelled
+  expired
+}
+
+enum PaymentStatus {
+  unpaid
+  paid
+  refunded
+}
+
+// Where a reservation originated. 'direct' = booked on gjecaj.al (Phase 2 flow);
+// 'beds24' = came from an OTA (Booking.com/Airbnb) via the Beds24 bridge.
+enum ReservationSource {
+  direct
+  beds24
+}
+
+// A single hotel/property. Today there is exactly one (Villa Gjecaj), but the
+// data model treats it as one of many.
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  timezone  String   @default("Europe/Tirane")
+  currency  String   @default("EUR")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  settings     TenantSettings?
+  rooms        Room[]
+  seasons      Season[]
+  reservations Reservation[]
+
+  @@map("tenants")
+}
+
+// Per-tenant business rules & integration config. Kept out of code so that
+// tax, hold duration and external credentials are configuration, not deploys.
+model TenantSettings {
+  id                  String  @id @default(uuid())
+  tenantId            String  @unique @map("tenant_id")
+  taxRate             Decimal @default(0) @map("tax_rate") @db.Decimal(5, 4) // e.g. 0.2000 = 20%
+  holdDurationMinutes Int     @default(30) @map("hold_duration_minutes") // pending expiry window
+  defaultMinStay      Int     @default(1) @map("default_min_stay")
+
+  // How direct bookings are paid: 'on_arrival' confirms the reservation
+  // immediately (guest pays at the property); 'prepaid' requires online payment
+  // before confirmation. Flip to 'prepaid' when a payment gateway is wired up.
+  paymentMode         String  @default("on_arrival") @map("payment_mode")
+
+  // External integration credentials are read per-tenant, not as global env.
+  // Populated in later phases (Stripe = Phase 2, Beds24 = Phase 4).
+  stripeSecretKey     String? @map("stripe_secret_key")
+  // beds24ApiKey holds the Beds24 long-life REFRESH token (exchanged for short
+  // access tokens). beds24PropId is the Beds24 property id used on POST /bookings.
+  beds24ApiKey        String? @map("beds24_api_key")
+  beds24PropId        String? @map("beds24_prop_id")
+
+  // "From" address for outbound email, e.g. 'Villa Gjecaj <no-reply@gjecaj.al>'.
+  // Per-tenant so it is never hardcoded (Phase 2).
+  emailFrom           String? @map("email_from")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_settings")
+}
+
+model Room {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  name      String
+  roomType  String   @map("room_type")
+  capacity  Int
+  basePrice Decimal  @map("base_price") @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Maps this local room to its Beds24 room id, so inbound OTA bookings can be
+  // placed on the right room and outbound blocks target the right room (Phase 4).
+  beds24RoomId String? @unique @map("beds24_room_id")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@index([tenantId])
+  @@map("rooms")
+}
+
+// Seasonal pricing + stay rules stored as data. price_modifier multiplies the
+// room base_price for dates inside [start_date, end_date].
+model Season {
+  id            String   @id @default(uuid())
+  tenantId      String   @map("tenant_id")
+  roomType      String   @map("room_type")
+  name          String?
+  startDate     DateTime @map("start_date") @db.Date
+  endDate       DateTime @map("end_date") @db.Date
+  priceModifier Decimal  @default(1.0) @map("price_modifier") @db.Decimal(6, 3)
+  minStay       Int      @default(1) @map("min_stay")
+  maxStay       Int?     @map("max_stay")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, roomType])
+  @@map("seasons")
+}
+
+model Reservation {
+  id            String            @id @default(uuid())
+  tenantId      String            @map("tenant_id")
+  roomId        String            @map("room_id")
+  checkIn       DateTime          @map("check_in") @db.Date
+  checkOut      DateTime          @map("check_out") @db.Date
+  guestName     String            @map("guest_name")
+  guestEmail    String            @map("guest_email")
+  status        ReservationStatus @default(pending)
+  totalPrice    Decimal           @map("total_price") @db.Decimal(10, 2)
+  paymentStatus PaymentStatus     @default(unpaid) @map("payment_status")
+  holdExpiresAt DateTime?         @map("hold_expires_at") // when a pending hold lapses
+  source        ReservationSource @default(direct) @map("source")
+  // Beds24/OTA booking id; unique when present so the inbound webhook is idempotent.
+  externalBookingId String?       @unique @map("external_booking_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId])
+  @@index([roomId, checkIn, checkOut])
+  @@map("reservations")
+  // NOTE: the anti-double-booking EXCLUDE constraint cannot be expressed in the
+  // Prisma schema. It is added via raw SQL inside the migration (see
+  // prisma/migrations/*/migration.sql). Constraint name: reservations_no_double_booking.
+}

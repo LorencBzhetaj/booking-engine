@@ -1,0 +1,46 @@
+{{> header}}
+
+<form class="filters" method="get" action="/admin/reservations">
+  <label>Status
+    <select name="status">
+      {{#each statuses}}
+        <option value="{{this}}" {{selected this ../filter.status}}>{{this}}</option>
+      {{/each}}
+    </select>
+  </label>
+  <label>From
+    <input type="date" name="from" value="{{filter.from}}" />
+  </label>
+  <label>To
+    <input type="date" name="to" value="{{filter.to}}" />
+  </label>
+  <button type="submit">Filter</button>
+</form>
+
+<p class="muted">Showing {{reservations.length}} reservation(s) · check-in between {{filter.from}} and {{filter.to}}.</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th>
+      <th>Status</th><th>Payment</th><th>Total ({{currency}})</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{#each reservations}}
+      <tr>
+        <td>{{this.guestName}}<br /><span class="muted">{{this.guestEmail}}</span></td>
+        <td>{{this.roomName}}</td>
+        <td>{{this.checkIn}}</td>
+        <td>{{this.checkOut}}</td>
+        <td><span class="badge s-{{this.status}}">{{this.status}}</span></td>
+        <td><span class="badge s-{{this.paymentStatus}}">{{this.paymentStatus}}</span></td>
+        <td>{{this.totalPrice}}</td>
+      </tr>
+    {{else}}
+      <tr><td colspan="7" class="muted">No reservations in this range.</td></tr>
+    {{/each}}
+  </tbody>
+</table>
+
+{{> footer}}
