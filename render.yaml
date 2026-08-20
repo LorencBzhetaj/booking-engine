@@ -1,0 +1,22 @@
+# Render Blueprint — creates the booking engine as a Docker web service on the
+# free plan. In Render: New → Blueprint → pick this repo → it prompts for the
+# secret values (DATABASE_URL, ADMIN_PASSWORD_HASH, BEDS24_WEBHOOK_SECRET).
+services:
+  - type: web
+    name: booking-engine
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_USER
+        value: admin
+      - key: ADMIN_PASSWORD_HASH
+        sync: false
+      - key: BEDS24_WEBHOOK_SECRET
+        sync: false
+      - key: NODE_ENV
+        value: production
