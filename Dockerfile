@@ -15,5 +15,7 @@ RUN npx prisma generate && npm run build
 ENV NODE_ENV=production
 EXPOSE 3001
 
-# Apply any pending migrations, then start. The host injects PORT + secrets.
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
+# Apply any pending migrations, then start. Migration is non-fatal so a transient
+# DB hiccup doesn't block the app; startup markers make the logs easy to read.
+# The host injects PORT + secrets.
+CMD ["sh", "-c", "echo '[startup] prisma migrate deploy...'; npx prisma migrate deploy || echo '[startup] migrate deploy FAILED (continuing)'; echo '[startup] starting app...'; node dist/main.js"]
