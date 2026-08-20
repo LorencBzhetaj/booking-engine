@@ -6,7 +6,6 @@ services:
     name: booking-engine
     runtime: docker
     plan: free
-    region: frankfurt
     dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:
