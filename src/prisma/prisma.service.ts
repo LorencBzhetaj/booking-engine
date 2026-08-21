@@ -14,17 +14,17 @@ export class PrismaService
 {
   private readonly logger = new Logger(PrismaService.name);
 
-  async onModuleInit(): Promise<void> {
-    // Non-fatal: if the DB is briefly unreachable at boot, the app still starts
-    // and binds its port (avoids an opaque 502). Prisma reconnects on first query.
-    try {
-      await this.$connect();
-      this.logger.log('Connected to the database');
-    } catch (e) {
-      this.logger.error(
-        `Database connect failed at boot (will retry on first query): ${String(e)}`,
+  onModuleInit(): void {
+    // Fire-and-forget: never block Nest bootstrap on the DB, so the app binds
+    // its port immediately (critical on free-tier cold starts). Prisma also
+    // connects lazily on the first query, so this is just an early warm-up.
+    this.$connect()
+      .then(() => this.logger.log('Connected to the database'))
+      .catch((e) =>
+        this.logger.error(
+          `DB connect at boot failed (will retry on first query): ${String(e)}`,
+        ),
       );
-    }
   }
 
   async onModuleDestroy(): Promise<void> {

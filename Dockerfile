@@ -15,7 +15,7 @@ RUN npx prisma generate && npm run build
 ENV NODE_ENV=production
 EXPOSE 3001
 
-# Apply any pending migrations, then start. Migration is non-fatal so a transient
-# DB hiccup doesn't block the app; startup markers make the logs easy to read.
-# The host injects PORT + secrets.
-CMD ["sh", "-c", "echo '[startup] prisma migrate deploy...'; npx prisma migrate deploy || echo '[startup] migrate deploy FAILED (continuing)'; echo '[startup] starting app...'; node dist/main.js"]
+# Start the app directly so it binds the port fast on every (cold) start. The DB
+# schema is applied out-of-band (run `npx prisma migrate deploy` from CI/locally
+# against the prod DB when the schema changes) — running it here can hang boot.
+CMD ["node", "dist/main.js"]
