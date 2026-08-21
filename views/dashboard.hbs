@@ -1,0 +1,79 @@
+{{> header}}
+
+<div class="cards">
+  <div class="card-metric">
+    <div class="cm-label">Arrivals today</div>
+    <div class="cm-value">{{arrivals.length}}</div>
+    <div class="cm-sub">{{today}}</div>
+  </div>
+  <div class="card-metric">
+    <div class="cm-label">Departures today</div>
+    <div class="cm-value">{{departures.length}}</div>
+    <div class="cm-sub">{{today}}</div>
+  </div>
+  <a class="card-metric" href="/admin/reservations?status=pending">
+    <div class="cm-label">Pending · needs action</div>
+    <div class="cm-value">{{pendingCount}}</div>
+    <div class="cm-sub">awaiting confirmation →</div>
+  </a>
+  <div class="card-metric">
+    <div class="cm-label">Occupancy · next 7 days</div>
+    <div class="cm-value">{{occupancyPct}}%</div>
+    <div class="cm-sub">{{occupiedRoomNights}} / {{totalRoomNights}} room-nights</div>
+  </div>
+</div>
+
+<div class="dash-grid">
+  <div class="card">
+    <h3 style="margin-top:0">Arrivals today</h3>
+    <table>
+      <thead><tr><th>Guest</th><th>Room</th><th>Status</th></tr></thead>
+      <tbody>
+        {{#each arrivals}}
+          <tr>
+            <td>{{this.guestName}}</td>
+            <td>{{this.roomName}}</td>
+            <td><span class="badge s-{{this.status}}">{{this.status}}</span></td>
+          </tr>
+        {{else}}
+          <tr><td colspan="3" class="muted">No arrivals today.</td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3 style="margin-top:0">Departures today</h3>
+    <table>
+      <thead><tr><th>Guest</th><th>Room</th><th>Status</th></tr></thead>
+      <tbody>
+        {{#each departures}}
+          <tr>
+            <td>{{this.guestName}}</td>
+            <td>{{this.roomName}}</td>
+            <td><span class="badge s-{{this.status}}">{{this.status}}</span></td>
+          </tr>
+        {{else}}
+          <tr><td colspan="3" class="muted">No departures today.</td></tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">Occupancy — next 7 days
+    <span class="muted">({{roomsTotal}} rooms)</span></h3>
+  <div class="occ">
+    {{#each days}}
+      <div class="occ-day">
+        <div class="occ-bar"><div class="occ-fill" style="height:{{this.pct}}%"></div></div>
+        <div class="occ-pct">{{this.pct}}%</div>
+        <div class="occ-lbl">{{this.weekday}}</div>
+        <div class="occ-date">{{this.occupied}}/{{this.total}}</div>
+      </div>
+    {{/each}}
+  </div>
+</div>
+
+{{> footer}}

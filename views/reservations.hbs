@@ -31,7 +31,7 @@
   </thead>
   <tbody>
     {{#each reservations}}
-      <tr>
+      <tr class="row-{{this.status}}">
         <td>{{this.guestName}}<br /><span class="muted">{{this.guestEmail}}</span>
           {{#if (eq this.source "beds24")}}<br /><span class="badge s-refunded">OTA</span>{{/if}}
         </td>

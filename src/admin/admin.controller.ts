@@ -46,6 +46,104 @@ export class AdminController {
     return tenant;
   }
 
+  // ---- 0) Dashboard ---------------------------------------------------------
+  @Get()
+  root(@Res() res: Response): void {
+    res.redirect('/admin/dashboard');
+  }
+
+  // Small at-a-glance dashboard. Pure aggregation of existing queries — no new
+  // business rules. Arrivals/departures today, pending awaiting action, and a
+  // simple 7-day occupancy (occupied rooms per day / total rooms).
+  @Get('dashboard')
+  @Render('dashboard')
+  async dashboard() {
+    const tenant = await this.tenant();
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const weekEnd = new Date(today.getTime() + 7 * 86_400_000);
+
+    const [rooms, arrivals, departures, pendingCount, windowRes] =
+      await Promise.all([
+        this.prisma.room.findMany({ where: { tenantId: tenant.id } }),
+        this.prisma.reservation.findMany({
+          where: { tenantId: tenant.id, status: { in: ACTIVE }, checkIn: today },
+          include: { room: true },
+          orderBy: { checkIn: 'asc' },
+        }),
+        this.prisma.reservation.findMany({
+          where: { tenantId: tenant.id, status: { in: ACTIVE }, checkOut: today },
+          include: { room: true },
+          orderBy: { checkOut: 'asc' },
+        }),
+        this.prisma.reservation.count({
+          where: { tenantId: tenant.id, status: ReservationStatus.pending },
+        }),
+        this.prisma.reservation.findMany({
+          where: {
+            tenantId: tenant.id,
+            status: { in: ACTIVE },
+            checkIn: { lt: weekEnd },
+            checkOut: { gt: today },
+          },
+          select: { checkIn: true, checkOut: true },
+        }),
+      ]);
+
+    const roomsTotal = rooms.length;
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(today.getTime() + i * 86_400_000);
+      const occupied = windowRes.filter(
+        (r) =>
+          r.checkIn.getTime() <= day.getTime() &&
+          day.getTime() < r.checkOut.getTime(),
+      ).length;
+      return {
+        date: isoDate(day),
+        weekday: day.toLocaleDateString('en', {
+          weekday: 'short',
+          timeZone: 'UTC',
+        }),
+        occupied,
+        total: roomsTotal,
+        pct: roomsTotal ? Math.round((occupied / roomsTotal) * 100) : 0,
+      };
+    });
+    const occupiedRoomNights = days.reduce((s, d) => s + d.occupied, 0);
+    const totalRoomNights = roomsTotal * 7;
+
+    const mapRes = (r: {
+      guestName: string;
+      room: { name: string };
+      status: string;
+      checkIn: Date;
+      checkOut: Date;
+    }) => ({
+      guestName: r.guestName,
+      roomName: r.room.name,
+      status: r.status,
+      checkIn: isoDate(r.checkIn),
+      checkOut: isoDate(r.checkOut),
+    });
+
+    return {
+      title: 'Dashboard',
+      today: isoDate(today),
+      roomsTotal,
+      arrivals: arrivals.map(mapRes),
+      departures: departures.map(mapRes),
+      pendingCount,
+      occupiedRoomNights,
+      totalRoomNights,
+      occupancyPct: totalRoomNights
+        ? Math.round((occupiedRoomNights / totalRoomNights) * 100)
+        : 0,
+      days,
+    };
+  }
+
   // ---- 1) Reservations list -------------------------------------------------
   @Get('reservations')
   @Render('reservations')

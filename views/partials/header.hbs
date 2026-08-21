@@ -46,11 +46,32 @@
     .cal .c-expired { background:#fecaca; }
     .muted { color:var(--muted); font-size:13px; }
     .actions { display:flex; gap:6px; }
+    /* status row accent (clearer than badge alone) */
+    tr.row-pending td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+    tr.row-confirmed td:first-child { box-shadow: inset 3px 0 0 #10b981; }
+    tr.row-cancelled td:first-child { box-shadow: inset 3px 0 0 #9ca3af; }
+    tr.row-expired td:first-child { box-shadow: inset 3px 0 0 #ef4444; }
+    /* dashboard */
+    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+    .card-metric { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; text-decoration:none; color:inherit; display:block; }
+    a.card-metric:hover { border-color:#B8A98C; }
+    .cm-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+    .cm-value { font-size:30px; font-weight:700; color:#111; margin-top:4px; line-height:1.1; }
+    .cm-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+    .dash-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+    .occ { display:flex; gap:8px; align-items:flex-end; margin-top:8px; }
+    .occ-day { flex:1; text-align:center; }
+    .occ-bar { height:90px; background:#f3f4f6; border-radius:6px; display:flex; align-items:flex-end; overflow:hidden; }
+    .occ-fill { width:100%; background:#C99A46; border-radius:6px 6px 0 0; min-height:2px; }
+    .occ-pct { font-size:12px; margin-top:4px; color:#111; font-weight:600; }
+    .occ-lbl { font-size:11px; color:var(--muted); }
+    .occ-date { font-size:10px; color:var(--muted); }
   </style>
 </head>
 <body>
   <header class="top">
     <span class="brand">Gjecaj Admin</span>
+    <a href="/admin/dashboard">Dashboard</a>
     <a href="/admin/reservations">Reservations</a>
     <a href="/admin/calendar">Calendar</a>
     <a href="/admin/rooms">Rooms</a>
