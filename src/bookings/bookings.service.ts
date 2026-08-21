@@ -242,6 +242,98 @@ export class BookingService {
     }
   }
 
+  /**
+   * Cancels a reservation (admin action). Once out of ('pending','confirmed')
+   * the dates leave the EXCLUDE guard and become bookable again automatically.
+   */
+  async cancelReservation(reservationId: string) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+    });
+    if (!reservation) throw new NotFoundException('reservation not found');
+    if (
+      reservation.status !== ReservationStatus.pending &&
+      reservation.status !== ReservationStatus.confirmed
+    ) {
+      throw new ConflictException(
+        `cannot cancel a ${reservation.status} reservation`,
+      );
+    }
+    return this.prisma.reservation.update({
+      where: { id: reservationId },
+      data: { status: ReservationStatus.cancelled },
+    });
+  }
+
+  /**
+   * Modifies an existing reservation's room and/or dates (admin action).
+   * Safe against double-booking: the single UPDATE re-checks the EXCLUDE
+   * constraint (a conflicting move raises 23P01 -> 409); the pre-check ignores
+   * the reservation itself. Recomputes the price and re-notifies Beds24.
+   */
+  async modifyReservation(
+    reservationId: string,
+    changes: { roomId?: string; checkIn?: Date; checkOut?: Date },
+  ) {
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id: reservationId },
+    });
+    if (!reservation) throw new NotFoundException('reservation not found');
+    if (
+      reservation.status !== ReservationStatus.pending &&
+      reservation.status !== ReservationStatus.confirmed
+    ) {
+      throw new ConflictException(
+        `cannot modify a ${reservation.status} reservation`,
+      );
+    }
+
+    const roomId = changes.roomId ?? reservation.roomId;
+    const checkIn = changes.checkIn ?? reservation.checkIn;
+    const checkOut = changes.checkOut ?? reservation.checkOut;
+
+    // Pre-check price + stay rules, excluding this reservation from the overlap.
+    const check = await this.availability.checkAvailability(
+      reservation.tenantId,
+      roomId,
+      checkIn,
+      checkOut,
+      reservationId,
+    );
+    if (!check.available) {
+      const reason = check.reason ?? 'not available';
+      if (reason === 'room not found') throw new NotFoundException(reason);
+      if (reason.includes('not available for the selected dates')) {
+        throw new ConflictException('room not available for the new dates');
+      }
+      throw new BadRequestException(reason);
+    }
+
+    let updated;
+    try {
+      updated = await this.prisma.reservation.update({
+        where: { id: reservationId },
+        data: {
+          roomId,
+          checkIn,
+          checkOut,
+          totalPrice: new Prisma.Decimal(check.totalPrice!),
+        },
+      });
+    } catch (e) {
+      if (this.isExclusionViolation(e)) {
+        throw new ConflictException('room not available for the new dates');
+      }
+      throw e;
+    }
+
+    // Keep Beds24 in sync after a manual change (best effort, never throws) —
+    // includeOta so OTA-sourced bookings are re-notified too.
+    await this.beds24Sync.pushDirectBooking(reservationId, { includeOta: true });
+
+    return updated;
+  }
+
   /** Detects a PostgreSQL exclusion_violation (SQLSTATE 23P01). */
   private isExclusionViolation(e: unknown): boolean {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {

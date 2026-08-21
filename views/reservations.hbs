@@ -1,5 +1,8 @@
 {{> header}}
 
+{{#if ok}}<div class="notice ok">Reservation {{ok}} successfully.</div>{{/if}}
+{{#if error}}<div class="notice error">{{error}}</div>{{/if}}
+
 <form class="filters" method="get" action="/admin/reservations">
   <label>Status
     <select name="status">
@@ -22,23 +25,45 @@
 <table>
   <thead>
     <tr>
-      <th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th>
-      <th>Status</th><th>Payment</th><th>Total ({{currency}})</th>
+      <th>Guest</th><th>Status</th><th>Payment</th><th>Total ({{currency}})</th>
+      <th>Modify (room · dates)</th><th></th>
     </tr>
   </thead>
   <tbody>
     {{#each reservations}}
       <tr>
-        <td>{{this.guestName}}<br /><span class="muted">{{this.guestEmail}}</span></td>
-        <td>{{this.roomName}}</td>
-        <td>{{this.checkIn}}</td>
-        <td>{{this.checkOut}}</td>
+        <td>{{this.guestName}}<br /><span class="muted">{{this.guestEmail}}</span>
+          {{#if (eq this.source "beds24")}}<br /><span class="badge s-refunded">OTA</span>{{/if}}
+        </td>
         <td><span class="badge s-{{this.status}}">{{this.status}}</span></td>
         <td><span class="badge s-{{this.paymentStatus}}">{{this.paymentStatus}}</span></td>
         <td>{{this.totalPrice}}</td>
+        <td>
+          {{#if this.active}}
+            <form class="inline" method="post" action="/admin/reservations/{{this.id}}?_method=PUT">
+              <select name="roomId" style="width:120px">
+                {{#each ../rooms}}
+                  <option value="{{this.id}}" {{selected this.id ../roomId}}>{{this.name}}</option>
+                {{/each}}
+              </select>
+              <input name="checkIn" type="date" value="{{this.checkIn}}" required />
+              <input name="checkOut" type="date" value="{{this.checkOut}}" required />
+              <button type="submit">Save</button>
+            </form>
+          {{else}}
+            <span class="muted">{{this.roomName}} · {{this.checkIn}} → {{this.checkOut}}</span>
+          {{/if}}
+        </td>
+        <td>
+          {{#if this.active}}
+            <form method="post" action="/admin/reservations/{{this.id}}/cancel" onsubmit="return confirm('Cancel this reservation?')">
+              <button class="danger" type="submit">Cancel</button>
+            </form>
+          {{/if}}
+        </td>
       </tr>
     {{else}}
-      <tr><td colspan="7" class="muted">No reservations in this range.</td></tr>
+      <tr><td colspan="6" class="muted">No reservations in this range.</td></tr>
     {{/each}}
   </tbody>
 </table>

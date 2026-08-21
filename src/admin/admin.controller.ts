@@ -14,6 +14,7 @@ import {
 import type { Response } from 'express';
 import { Prisma, ReservationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { BookingService } from '../bookings/bookings.service';
 
 const ACTIVE: ReservationStatus[] = [
   ReservationStatus.pending,
@@ -31,7 +32,10 @@ function isoDate(d: Date): string {
  */
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly booking: BookingService,
+  ) {}
 
   /** The single active tenant (Phase 3 is single-tenant). */
   private async tenant() {
@@ -49,6 +53,8 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('ok') ok?: string,
+    @Query('error') error?: string,
   ) {
     const tenant = await this.tenant();
 
@@ -66,11 +72,17 @@ export class AdminController {
       where.status = status as ReservationStatus;
     }
 
-    const reservations = await this.prisma.reservation.findMany({
-      where,
-      include: { room: true },
-      orderBy: { checkIn: 'asc' },
-    });
+    const [reservations, rooms] = await Promise.all([
+      this.prisma.reservation.findMany({
+        where,
+        include: { room: true },
+        orderBy: { checkIn: 'asc' },
+      }),
+      this.prisma.room.findMany({
+        where: { tenantId: tenant.id },
+        orderBy: { name: 'asc' },
+      }),
+    ]);
 
     return {
       title: 'Reservations',
@@ -81,7 +93,12 @@ export class AdminController {
         from: isoDate(fromDate),
         to: isoDate(toDate),
       },
+      rooms: rooms.map((r) => ({ id: r.id, name: r.name })),
+      ok,
+      error,
       reservations: reservations.map((r) => ({
+        id: r.id,
+        roomId: r.roomId,
         guestName: r.guestName,
         guestEmail: r.guestEmail,
         roomName: r.room.name,
@@ -90,8 +107,47 @@ export class AdminController {
         status: r.status,
         paymentStatus: r.paymentStatus,
         totalPrice: r.totalPrice.toFixed(2),
+        source: r.source,
+        active: ACTIVE.includes(r.status),
       })),
     };
+  }
+
+  // Cancel a reservation → frees the dates (leaves the EXCLUDE guard).
+  @Post('reservations/:id/cancel')
+  async cancelReservation(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      await this.booking.cancelReservation(id);
+      res.redirect('/admin/reservations?ok=cancelled');
+    } catch (e) {
+      res.redirect(
+        `/admin/reservations?error=${encodeURIComponent((e as Error).message)}`,
+      );
+    }
+  }
+
+  // Modify a reservation's room and/or dates (atomic, re-checks the constraint).
+  @Put('reservations/:id')
+  async modifyReservation(
+    @Param('id') id: string,
+    @Body() body: { roomId?: string; checkIn?: string; checkOut?: string },
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      await this.booking.modifyReservation(id, {
+        roomId: body.roomId || undefined,
+        checkIn: body.checkIn ? new Date(body.checkIn) : undefined,
+        checkOut: body.checkOut ? new Date(body.checkOut) : undefined,
+      });
+      res.redirect('/admin/reservations?ok=updated');
+    } catch (e) {
+      res.redirect(
+        `/admin/reservations?error=${encodeURIComponent((e as Error).message)}`,
+      );
+    }
   }
 
   // ---- 2) Monthly calendar --------------------------------------------------

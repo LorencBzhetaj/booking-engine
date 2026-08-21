@@ -148,13 +148,19 @@ export class Beds24SyncService {
   // Best effort: failures are logged for retry, never block the local booking.
   async pushDirectBooking(
     reservationId: string,
+    // On a manual admin modify we also re-notify OTA-sourced bookings so a
+    // changed reservation doesn't drift out of sync with Beds24.
+    opts: { includeOta?: boolean } = {},
   ): Promise<{ pushed: boolean; skipped?: string }> {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id: reservationId },
       include: { room: true, tenant: { include: { settings: true } } },
     });
     if (!reservation) return { pushed: false, skipped: 'not_found' };
-    if (reservation.source !== ReservationSource.direct) {
+    if (
+      reservation.source !== ReservationSource.direct &&
+      !opts.includeOta
+    ) {
       return { pushed: false, skipped: 'not_direct' };
     }
 

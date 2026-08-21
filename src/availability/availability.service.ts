@@ -35,6 +35,9 @@ export class AvailabilityService {
     roomId: string,
     checkIn: Date,
     checkOut: Date,
+    // When modifying an existing reservation, exclude it from the overlap check
+    // so it doesn't conflict with itself.
+    excludeReservationId?: string,
   ): Promise<AvailabilityResult> {
     const nights = Math.round(
       (checkOut.getTime() - checkIn.getTime()) / MS_PER_DAY,
@@ -60,6 +63,7 @@ export class AvailabilityService {
         status: { in: ACTIVE_STATUSES },
         checkIn: { lt: checkOut },
         checkOut: { gt: checkIn },
+        ...(excludeReservationId ? { id: { not: excludeReservationId } } : {}),
       },
       select: { id: true },
     });
