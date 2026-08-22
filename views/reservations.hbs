@@ -17,15 +17,22 @@
   <label>To
     <input type="date" name="to" value="{{filter.to}}" />
   </label>
+  <label>Search (code / guest)
+    <input type="search" name="q" value="{{filter.q}}" placeholder="RES-2026-… / name / email" style="width:200px" />
+  </label>
   <button type="submit">Filter</button>
+  {{#if filter.q}}<a href="/admin/reservations"><button class="ghost" type="button">Clear</button></a>{{/if}}
 </form>
 
-<p class="muted">Showing {{reservations.length}} reservation(s) · check-in between {{filter.from}} and {{filter.to}}.</p>
+<p class="muted">
+  {{#if filter.q}}Showing {{reservations.length}} result(s) for “{{filter.q}}”.
+  {{else}}Showing {{reservations.length}} reservation(s) · check-in between {{filter.from}} and {{filter.to}}.{{/if}}
+</p>
 
 <table>
   <thead>
     <tr>
-      <th>Guest</th><th>Status</th><th>Payment</th><th>Total ({{currency}})</th>
+      <th>Guest</th><th>Code</th><th>Status</th><th>Payment</th><th>Total ({{currency}})</th>
       <th>Modify (room · dates)</th><th></th>
     </tr>
   </thead>
@@ -35,6 +42,7 @@
         <td>{{this.guestName}}<br /><span class="muted">{{this.guestEmail}}</span>
           {{#if (eq this.source "beds24")}}<br /><span class="badge s-refunded">OTA</span>{{/if}}
         </td>
+        <td><span class="muted" style="font-family:monospace">{{this.confirmationNumber}}</span></td>
         <td><span class="badge s-{{this.status}}">{{this.status}}</span></td>
         <td><span class="badge s-{{this.paymentStatus}}">{{this.paymentStatus}}</span></td>
         <td>{{this.totalPrice}}</td>
@@ -63,7 +71,7 @@
         </td>
       </tr>
     {{else}}
-      <tr><td colspan="6" class="muted">No reservations in this range.</td></tr>
+      <tr><td colspan="7" class="muted">No reservations found.</td></tr>
     {{/each}}
   </tbody>
 </table>

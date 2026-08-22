@@ -66,6 +66,17 @@
     .occ-pct { font-size:12px; margin-top:4px; color:#111; font-weight:600; }
     .occ-lbl { font-size:11px; color:var(--muted); }
     .occ-date { font-size:10px; color:var(--muted); }
+    /* rooms cards */
+    .room-card { display:grid; grid-template-columns:180px 1fr auto; gap:16px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; align-items:start; }
+    .room-photo img { width:180px; height:120px; object-fit:cover; border-radius:8px; display:block; }
+    .room-ph { width:180px; height:120px; border-radius:8px; background:#efe9dd; color:#8a7a5c; display:flex; align-items:center; justify-content:center; text-align:center; font-size:13px; font-weight:600; padding:8px; }
+    .upload-form { margin-top:8px; display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+    .upload-form input[type=file] { font-size:12px; max-width:180px; }
+    .room-edit { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-content:start; }
+    .room-edit label { font-size:12px; }
+    .room-edit label.full { grid-column:1 / -1; }
+    .room-edit input { width:100%; }
+    @media (max-width:640px){ .room-card { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>

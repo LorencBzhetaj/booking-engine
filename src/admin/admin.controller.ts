@@ -10,11 +10,18 @@ import {
   Query,
   Render,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { Prisma, ReservationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingService } from '../bookings/bookings.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_IMAGE = ['image/jpeg', 'image/png', 'image/webp'];
 
 const ACTIVE: ReservationStatus[] = [
   ReservationStatus.pending,
@@ -35,6 +42,7 @@ export class AdminController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly booking: BookingService,
+    private readonly cloudinary: CloudinaryService,
   ) {}
 
   /** The single active tenant (Phase 3 is single-tenant). */
@@ -151,10 +159,12 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('q') q?: string,
     @Query('ok') ok?: string,
     @Query('error') error?: string,
   ) {
     const tenant = await this.tenant();
+    const search = (q ?? '').trim();
 
     // Default window: next 30 days (by check-in).
     const fromDate = from ? new Date(from) : new Date();
@@ -162,10 +172,17 @@ export class AdminController {
       ? new Date(to)
       : new Date(fromDate.getTime() + 30 * 86_400_000);
 
-    const where: Prisma.ReservationWhereInput = {
-      tenantId: tenant.id,
-      checkIn: { gte: fromDate, lte: toDate },
-    };
+    const where: Prisma.ReservationWhereInput = { tenantId: tenant.id };
+    if (search) {
+      // Code/guest search: match across all dates (ignore the date window).
+      where.OR = [
+        { confirmationNumber: { contains: search, mode: 'insensitive' } },
+        { guestName: { contains: search, mode: 'insensitive' } },
+        { guestEmail: { contains: search, mode: 'insensitive' } },
+      ];
+    } else {
+      where.checkIn = { gte: fromDate, lte: toDate };
+    }
     if (status && status !== 'all') {
       where.status = status as ReservationStatus;
     }
@@ -190,6 +207,7 @@ export class AdminController {
         status: status ?? 'all',
         from: isoDate(fromDate),
         to: isoDate(toDate),
+        q: search,
       },
       rooms: rooms.map((r) => ({ id: r.id, name: r.name })),
       ok,
@@ -199,6 +217,7 @@ export class AdminController {
         roomId: r.roomId,
         guestName: r.guestName,
         guestEmail: r.guestEmail,
+        confirmationNumber: r.confirmationNumber,
         roomName: r.room.name,
         checkIn: isoDate(r.checkIn),
         checkOut: isoDate(r.checkOut),
@@ -328,7 +347,10 @@ export class AdminController {
         roomType: r.roomType,
         capacity: r.capacity,
         basePrice: r.basePrice.toFixed(2),
+        imageUrl: r.imageUrl,
+        amenities: r.amenities ?? '',
       })),
+      cloudinaryReady: this.cloudinary.isConfigured(),
       error,
       ok,
     };
@@ -347,6 +369,7 @@ export class AdminController {
         roomType: body.roomType,
         capacity: parseInt(String(body.capacity), 10),
         basePrice: new Prisma.Decimal(body.basePrice),
+        amenities: body.amenities || null,
       },
     });
     res.redirect('/admin/rooms?ok=created');
@@ -365,9 +388,38 @@ export class AdminController {
         roomType: body.roomType,
         capacity: parseInt(String(body.capacity), 10),
         basePrice: new Prisma.Decimal(body.basePrice),
+        amenities: body.amenities || null,
       },
     });
     res.redirect('/admin/rooms?ok=updated');
+  }
+
+  // Upload a room photo to Cloudinary and store the returned URL.
+  @Post('rooms/:id/upload-image')
+  @UseInterceptors(
+    FileInterceptor('image', { limits: { fileSize: 6 * 1024 * 1024 } }),
+  )
+  async uploadRoomImage(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    const fail = (msg: string) =>
+      res.redirect(`/admin/rooms?error=${encodeURIComponent(msg)}`);
+    try {
+      if (!file) return fail('No file selected.');
+      if (!ALLOWED_IMAGE.includes(file.mimetype)) {
+        return fail('Only JPG, PNG or WEBP images are allowed.');
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        return fail('Image is too large (max 5MB).');
+      }
+      const url = await this.cloudinary.uploadImage(file.buffer, `room-${id}`);
+      await this.prisma.room.update({ where: { id }, data: { imageUrl: url } });
+      res.redirect('/admin/rooms?ok=image_uploaded');
+    } catch (e) {
+      fail((e as Error).message);
+    }
   }
 
   @Delete('rooms/:id')
@@ -523,6 +575,7 @@ interface RoomBody {
   roomType: string;
   capacity: string | number;
   basePrice: string;
+  amenities?: string;
 }
 
 interface SeasonBody {

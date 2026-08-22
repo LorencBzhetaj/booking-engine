@@ -6,32 +6,40 @@
     {{#if (eq error "has_active_reservations")}}Cannot delete: this room has active (pending/confirmed) reservations.{{else}}{{error}}{{/if}}
   </div>
 {{/if}}
+{{#unless cloudinaryReady}}
+  <div class="notice warn">Photo uploads are disabled — set CLOUDINARY_URL in the environment.</div>
+{{/unless}}
 
-<table>
-  <thead>
-    <tr><th>Name</th><th>Type</th><th>Capacity</th><th>Base price ({{currency}})</th><th></th></tr>
-  </thead>
-  <tbody>
-    {{#each rooms}}
-      <tr>
-        <form class="inline" method="post" action="/admin/rooms/{{this.id}}?_method=PUT">
-          <td><input name="name" value="{{this.name}}" required /></td>
-          <td><input name="roomType" value="{{this.roomType}}" required /></td>
-          <td><input name="capacity" type="number" min="1" value="{{this.capacity}}" required style="width:70px" /></td>
-          <td><input name="basePrice" type="number" step="0.01" min="0" value="{{this.basePrice}}" required style="width:100px" /></td>
-          <td class="actions">
-            <button type="submit">Save</button>
-        </form>
-            <form method="post" action="/admin/rooms/{{this.id}}?_method=DELETE" onsubmit="return confirm('Delete room {{this.name}}?')">
-              <button class="danger" type="submit">Delete</button>
-            </form>
-          </td>
-      </tr>
-    {{else}}
-      <tr><td colspan="5" class="muted">No rooms yet.</td></tr>
-    {{/each}}
-  </tbody>
-</table>
+{{#each rooms}}
+  <div class="room-card">
+    <div class="room-photo">
+      {{#if this.imageUrl}}
+        <img src="{{this.imageUrl}}" alt="{{this.name}}" />
+      {{else}}
+        <div class="room-ph">{{this.name}}<br /><span class="muted">no photo</span></div>
+      {{/if}}
+      <form class="upload-form" method="post" action="/admin/rooms/{{this.id}}/upload-image" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required />
+        <button type="submit">Upload photo</button>
+      </form>
+    </div>
+
+    <form class="room-edit" method="post" action="/admin/rooms/{{this.id}}?_method=PUT">
+      <label>Name<input name="name" value="{{this.name}}" required /></label>
+      <label>Type<input name="roomType" value="{{this.roomType}}" required /></label>
+      <label>Capacity<input name="capacity" type="number" min="1" value="{{this.capacity}}" required /></label>
+      <label>Base price<input name="basePrice" type="number" step="0.01" min="0" value="{{this.basePrice}}" required /></label>
+      <label class="full">Amenities (comma-separated)<input name="amenities" value="{{this.amenities}}" placeholder="Wifi, Breakfast, Mountain view" /></label>
+      <div class="actions full"><button type="submit">Save</button></div>
+    </form>
+
+    <form method="post" action="/admin/rooms/{{this.id}}?_method=DELETE" onsubmit="return confirm('Delete room {{this.name}}? This cannot be undone.')">
+      <button class="danger" type="submit">Delete</button>
+    </form>
+  </div>
+{{else}}
+  <p class="muted">No rooms yet.</p>
+{{/each}}
 
 <div class="card" style="margin-top:20px">
   <h3 style="margin-top:0">Add room</h3>
@@ -40,6 +48,7 @@
     <label>Type<input name="roomType" placeholder="double / family" required /></label>
     <label>Capacity<input name="capacity" type="number" min="1" value="2" required /></label>
     <label>Base price<input name="basePrice" type="number" step="0.01" min="0" value="60.00" required /></label>
+    <label>Amenities<input name="amenities" placeholder="Wifi, Breakfast" /></label>
     <button type="submit">Create</button>
   </form>
 </div>

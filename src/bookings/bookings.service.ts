@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { randomInt } from 'crypto';
 import { PaymentStatus, Prisma, ReservationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
@@ -23,6 +24,14 @@ export interface CreateBookingInput {
 
 function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+// Human-readable booking code, e.g. RES-2026-7Q3F2A. Ambiguous chars omitted.
+function genConfirmationNumber(): string {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += alphabet[randomInt(alphabet.length)];
+  return `RES-${new Date().getFullYear()}-${code}`;
 }
 
 @Injectable()
@@ -81,6 +90,7 @@ export class BookingService {
           checkOut,
           guestName,
           guestEmail,
+          confirmationNumber: genConfirmationNumber(),
           status: onArrival
             ? ReservationStatus.confirmed
             : ReservationStatus.pending,

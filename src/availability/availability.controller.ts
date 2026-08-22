@@ -1,10 +1,31 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { AvailabilityService } from './availability.service';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 
 @Controller('availability')
 export class AvailabilityController {
   constructor(private readonly availability: AvailabilityService) {}
+
+  // GET /availability/search?tenantId=&checkIn=&checkOut=&guests=
+  // -> { rooms: AvailableRoom[] } — date-first search across all rooms.
+  @Get('search')
+  async search(
+    @Query('tenantId') tenantId: string,
+    @Query('checkIn') checkIn: string,
+    @Query('checkOut') checkOut: string,
+    @Query('guests') guests?: string,
+  ) {
+    if (!tenantId || !checkIn || !checkOut) {
+      throw new BadRequestException('tenantId, checkIn, checkOut are required');
+    }
+    const rooms = await this.availability.searchAvailableRooms(
+      tenantId,
+      new Date(checkIn),
+      new Date(checkOut),
+      guests ? parseInt(guests, 10) : undefined,
+    );
+    return { rooms };
+  }
 
   // GET /availability?tenantId=&roomId=&checkIn=&checkOut=
   // -> { available: boolean, totalPrice?, reason? }

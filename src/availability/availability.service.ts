@@ -132,4 +132,61 @@ export class AvailabilityService {
 
     return { available: true, nights, totalPrice: total.toFixed(2) };
   }
+
+  /**
+   * Date-first search: returns every room free for [checkIn, checkOut), with
+   * pricing. Reuses checkAvailability per room (no duplicated logic).
+   */
+  async searchAvailableRooms(
+    tenantId: string,
+    checkIn: Date,
+    checkOut: Date,
+    guests?: number,
+  ): Promise<AvailableRoom[]> {
+    const rooms = await this.prisma.room.findMany({
+      where: { tenantId },
+      orderBy: { basePrice: 'asc' },
+    });
+
+    const results: AvailableRoom[] = [];
+    for (const room of rooms) {
+      if (guests && room.capacity < guests) continue;
+      const check = await this.checkAvailability(
+        tenantId,
+        room.id,
+        checkIn,
+        checkOut,
+      );
+      if (!check.available || !check.totalPrice || !check.nights) continue;
+      const pricePerNight = new Prisma.Decimal(check.totalPrice)
+        .div(check.nights)
+        .toDecimalPlaces(2)
+        .toFixed(2);
+      results.push({
+        roomId: room.id,
+        name: room.name,
+        capacity: room.capacity,
+        pricePerNight,
+        totalPrice: check.totalPrice,
+        nights: check.nights,
+        imageUrl: room.imageUrl ?? null,
+        amenities: (room.amenities ?? '')
+          .split(',')
+          .map((a) => a.trim())
+          .filter(Boolean),
+      });
+    }
+    return results;
+  }
+}
+
+export interface AvailableRoom {
+  roomId: string;
+  name: string;
+  capacity: number;
+  pricePerNight: string;
+  totalPrice: string;
+  nights: number;
+  imageUrl: string | null;
+  amenities: string[];
 }

@@ -87,6 +87,10 @@ model Room {
   roomType  String   @map("room_type")
   capacity  Int
   basePrice Decimal  @map("base_price") @db.Decimal(10, 2)
+  // Public-facing photo (Cloudinary URL) and a short amenities list
+  // (comma-separated), shown on the guest search results.
+  imageUrl  String?  @map("image_url")
+  amenities String?  @map("amenities")
   createdAt DateTime @default(now()) @map("created_at")
 
   // Maps this local room to its Beds24 room id, so inbound OTA bookings can be
@@ -127,6 +131,8 @@ model Reservation {
   checkOut      DateTime          @map("check_out") @db.Date
   guestName     String            @map("guest_name")
   guestEmail    String            @map("guest_email")
+  // Human-readable booking code (RES-YYYY-XXXXXX); unique when present.
+  confirmationNumber String?      @unique @map("confirmation_number")
   status        ReservationStatus @default(pending)
   totalPrice    Decimal           @map("total_price") @db.Decimal(10, 2)
   paymentStatus PaymentStatus     @default(unpaid) @map("payment_status")
